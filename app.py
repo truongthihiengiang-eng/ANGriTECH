@@ -29,7 +29,7 @@ BG2_PATH = BASE_DIR / "assets" / "background2.jpg"
 
 EMBEDDING_MODEL_NAME = (
     "sentence-transformers/"
-    "paraphrase-multilingual-MiniLM-L12-v2"
+    "all-MiniLM-L6-v2"
 )
 
 GEMINI_MODEL = os.getenv(
