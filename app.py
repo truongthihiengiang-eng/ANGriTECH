@@ -1338,9 +1338,126 @@ NỘI DUNG:
         return recognized, answer, sources
 
     except Exception as error:
+
+        # ------------------------------------------------
+        # Giữ lại những gì đã xử lý thành công
+        # ------------------------------------------------
+
+        ede_value = str(
+            locals().get("ede_text", "") or ""
+        ).strip()
+
+        vietnamese_value = str(
+            locals().get("vietnamese_query", "") or ""
+        ).strip()
+
+        recognized = ""
+
+        if ede_value or vietnamese_value:
+            recognized = (
+                "VĂN BẢN Ê ĐÊ NHẬN DẠNG:\n"
+                + (ede_value or "(chưa xác định)")
+                + "\n\nTRUY VẤN TIẾNG VIỆT:\n"
+                + (vietnamese_value or "(chưa chuyển được)")
+            )
+
+
+        # ------------------------------------------------
+        # Nếu RAG đã trả answer + source nhưng lỗi xảy ra
+        # ở bước tạo câu trả lời song ngữ, giữ kết quả RAG
+        # ------------------------------------------------
+
+        existing_answer = locals().get("answer")
+        existing_sources = locals().get("sources")
+
+        if existing_answer and existing_sources:
+            return (
+                recognized,
+                str(existing_answer),
+                str(existing_sources)
+            )
+
+
+        # ------------------------------------------------
+        # Nếu đã có truy vấn tiếng Việt:
+        # dùng RAG fallback không cần Gemini
+        # ------------------------------------------------
+
+        if vietnamese_value:
+
+            try:
+
+                results = search(
+                    vietnamese_value,
+                    k=5
+                )
+
+                if results:
+
+                    fallback_answer = build_fallback_answer(
+                        results
+                    )
+
+                    fallback_sources = build_sources(
+                        results
+                    )
+
+                    return (
+                        recognized,
+                        fallback_answer,
+                        fallback_sources
+                    )
+
+            except Exception:
+                pass
+
+
+        # ------------------------------------------------
+        # Thông báo thân thiện
+        # ------------------------------------------------
+
+        error_text = str(error).lower()
+
+        quota_error = (
+            "429" in error_text
+            or "resource_exhausted" in error_text
+            or "quota" in error_text
+            or "giới hạn lượt sử dụng" in error_text
+        )
+
+
+        if quota_error:
+
+            if ede_value and not vietnamese_value:
+
+                message = (
+                    "⚠️ ANGriTECH đã nhận dạng được một phần "
+                    "nội dung tiếng Ê Đê, nhưng dịch vụ AI đang "
+                    "tạm đạt giới hạn nên chưa thể chuyển đầy đủ "
+                    "sang truy vấn tiếng Việt. "
+                    "Đây là chức năng tiếng Ê Đê thử nghiệm."
+                )
+
+            else:
+
+                message = (
+                    "⚠️ Dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
+                    "Chức năng tiếng Ê Đê hiện ở mức thử nghiệm; "
+                    "vui lòng thử lại sau."
+                )
+
+        else:
+
+            message = (
+                "⚠️ Hiện chưa thể hoàn tất xử lý tiếng Ê Đê. "
+                "Vui lòng thử lại với âm thanh rõ hơn. "
+                "Đây là chức năng thử nghiệm."
+            )
+
+
         return (
-            "",
-            f"Lỗi: {type(error).__name__}: {error}",
+            recognized,
+            message,
             ""
         )
 
