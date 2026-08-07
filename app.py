@@ -113,9 +113,18 @@ def generate_content(
     contents,
     retries: int = 2
 ) -> str:
+    """
+    Gọi Gemini an toàn.
+
+    - 429/quota: không retry liên tục
+    - Lỗi tạm thời khác: retry ngắn
+    - Không đưa chi tiết kỹ thuật ra giao diện
+    """
+
     last_error = None
 
     for attempt in range(retries + 1):
+
         try:
             response = client.models.generate_content(
                 model=GEMINI_MODEL,
@@ -125,21 +134,44 @@ def generate_content(
             if response.text:
                 return response.text.strip()
 
+            raise RuntimeError(
+                "Gemini không trả về nội dung."
+            )
+
         except Exception as error:
+
             last_error = error
+            error_text = str(error).lower()
+
+            # -----------------------------------------------
+            # Hết quota / rate limit
+            # -----------------------------------------------
+
+            quota_error = (
+                "429" in error_text
+                or "resource_exhausted" in error_text
+                or "quota exceeded" in error_text
+                or "rate limit" in error_text
+            )
+
+            if quota_error:
+                raise RuntimeError(
+                    "Dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
+                    "Vui lòng thử lại sau vài phút."
+                )
+
+            # -----------------------------------------------
+            # Lỗi khác: thử lại ngắn
+            # -----------------------------------------------
 
             if attempt < retries:
                 time.sleep(2 ** attempt)
+                continue
 
     raise RuntimeError(
-        f"Không gọi được Gemini: {last_error}"
+        "Dịch vụ AI tạm thời chưa phản hồi. "
+        "Vui lòng thử lại sau."
     )
-
-
-# ============================================================
-# 5. TÌM KIẾM FAISS
-# ============================================================
-
 
 def normalize_text(text):
     text = str(text or "").lower()
@@ -510,8 +542,25 @@ Hãy trả lời trực tiếp câu hỏi của người dùng.
         )
 
     except Exception as error:
+        error_text = str(error)
+
+        if (
+            "giới hạn lượt sử dụng" in error_text.lower()
+            or "quota" in error_text.lower()
+            or "429" in error_text
+        ):
+            message = (
+                "⚠️ Dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
+                "Vui lòng thử lại sau vài phút."
+            )
+        else:
+            message = (
+                "⚠️ Dịch vụ AI tạm thời chưa phản hồi. "
+                "Vui lòng thử lại sau."
+            )
+
         return (
-            f"Lỗi Gemini: {type(error).__name__}: {error}",
+            message,
             build_sources(results)
         )
 
