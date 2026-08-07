@@ -408,12 +408,24 @@ def build_sources(
 # 6. RAG VĂN BẢN
 # ============================================================
 
+
 def ask_rag_with_source(
     question: str,
-    k: int = 5
+    k: int = 6
 ):
+    """
+    RAG văn bản:
+    - Hybrid Search tìm các đoạn liên quan
+    - Gemini tổng hợp thông tin từ nhiều đoạn
+    - Không bịa ngoài tài liệu
+    """
+
     if not question or not question.strip():
         return "Bạn chưa nhập câu hỏi.", ""
+
+    # --------------------------------------------------------
+    # 1. Tìm tài liệu
+    # --------------------------------------------------------
 
     results = search(
         question,
@@ -422,44 +434,97 @@ def ask_rag_with_source(
 
     if not results:
         return (
-            "Không tìm thấy tài liệu phù hợp.",
+            "Không tìm thấy tài liệu phù hợp với câu hỏi.",
             ""
         )
 
-    context = build_context(results)
+    # --------------------------------------------------------
+    # 2. Tạo context
+    # --------------------------------------------------------
+
+    context = build_context(
+        results,
+        max_chars_per_chunk=1800
+    )
+
+    if not context.strip():
+        return (
+            "Không tìm thấy nội dung phù hợp trong tài liệu.",
+            build_sources(results)
+        )
+
+    # --------------------------------------------------------
+    # 3. Prompt RAG cải tiến
+    # --------------------------------------------------------
 
     prompt = f"""
 Bạn là ANGriTECH, trợ lý AI hỗ trợ sản xuất
 nông nghiệp tại Đắk Lắk.
 
-Chỉ sử dụng nội dung trong phần TÀI LIỆU
-để trả lời câu hỏi.
-
-Nếu tài liệu không đủ thông tin, phải nói rõ:
-"Tôi không tìm thấy thông tin đầy đủ trong tài liệu."
-
-TÀI LIỆU:
-{context}
-
-CÂU HỎI:
+CÂU HỎI CỦA NGƯỜI DÙNG:
 {question}
 
-Yêu cầu:
-- Trả lời bằng tiếng Việt.
-- Trình bày rõ ràng và dễ hiểu.
-- Không tự bổ sung thông tin ngoài tài liệu.
-- Không tự đề xuất thuốc hoặc liều lượng
-  nếu tài liệu không nêu.
+TÀI LIỆU TRUY XUẤT:
+{context}
+
+NHIỆM VỤ:
+
+1. Hãy đọc TẤT CẢ các đoạn tài liệu được cung cấp.
+
+2. Nếu thông tin cần thiết nằm rải rác ở nhiều đoạn,
+   hãy tổng hợp chúng thành một câu trả lời thống nhất.
+
+3. Nếu tài liệu chỉ trả lời được một phần câu hỏi,
+   vẫn phải trả lời phần có căn cứ và nói rõ phần nào
+   tài liệu chưa cung cấp đầy đủ.
+
+4. KHÔNG được từ chối trả lời chỉ vì không có một đoạn
+   duy nhất chứa toàn bộ đáp án.
+
+5. Chỉ được sử dụng thông tin có trong tài liệu.
+   Không tự bổ sung kiến thức bên ngoài.
+
+6. Không tự đề xuất thuốc, hóa chất, liều lượng hoặc
+   quy trình xử lý nếu tài liệu không nêu.
+
+7. Trả lời bằng tiếng Việt, rõ ràng, dễ hiểu.
+
+8. Nếu tài liệu có các mốc thời gian, lượng nước,
+   tần suất, điều kiện hoặc lưu ý kỹ thuật thì
+   ưu tiên trình bày cụ thể.
+
+9. Chỉ khi TẤT CẢ các đoạn tài liệu hoàn toàn không
+   liên quan đến câu hỏi mới trả lời:
+   "Tôi chưa tìm thấy thông tin phù hợp trong tài liệu hiện có."
+
+Hãy trả lời trực tiếp câu hỏi của người dùng.
 """
 
-    answer = generate_content(prompt)
+    # --------------------------------------------------------
+    # 4. Gọi Gemini
+    # --------------------------------------------------------
 
-    return answer, build_sources(results)
+    try:
+        answer = generate_content(
+            prompt
+        )
 
+    except Exception as error:
+        return (
+            f"Lỗi Gemini: {type(error).__name__}: {error}",
+            build_sources(results)
+        )
 
-# ============================================================
-# 7. PHÂN TÍCH HÌNH ẢNH
-# ============================================================
+    # --------------------------------------------------------
+    # 5. Nguồn
+    # --------------------------------------------------------
+
+    sources = build_sources(
+        results
+    )
+
+    return answer, sources
+
 
 def analyze_crop_image(
     image,
