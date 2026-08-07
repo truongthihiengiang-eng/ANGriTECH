@@ -425,15 +425,76 @@ Nội dung:
 def build_sources(
     results: list[dict]
 ) -> str:
-    sources = sorted(
-        {
-            f"📄 {item.get('source', 'Không rõ')} "
-            f"- Trang {item.get('page', 'Không rõ')}"
-            for item in results
-        }
-    )
+    """
+    Hiển thị nguồn tài liệu RAG:
+    - Tên tài liệu
+    - Trang
+    - Trích lục nguyên văn từ chunk được truy xuất
+    """
 
-    return "\n".join(sources)
+    if not results:
+        return ""
+
+    blocks = []
+    seen = set()
+
+    for item in results:
+
+        if not isinstance(item, dict):
+            continue
+
+        source = (
+            item.get("source")
+            or item.get("filename")
+            or item.get("file")
+            or "Không rõ nguồn"
+        )
+
+        page = (
+            item.get("page")
+            or item.get("page_number")
+            or item.get("page_num")
+            or "Không rõ"
+        )
+
+        text = (
+            item.get("text")
+            or item.get("content")
+            or item.get("chunk")
+            or item.get("page_content")
+            or ""
+        )
+
+        source = str(source).strip()
+        page = str(page).strip()
+        text = " ".join(str(text).split())
+
+        # Giới hạn trích lục để giao diện gọn
+        if len(text) > 500:
+            text = text[:500].rsplit(" ", 1)[0] + "..."
+
+        # Tránh hiển thị nguồn trùng hoàn toàn
+        key = (source, page, text)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        block = (
+            f"📖 {source}\n"
+            f"📄 Trang {page}"
+        )
+
+        if text:
+            block += (
+                "\n🔎 Trích lục:\n"
+                f"“{text}”"
+            )
+
+        blocks.append(block)
+
+    return "\n\n".join(blocks)
 
 
 # ============================================================
