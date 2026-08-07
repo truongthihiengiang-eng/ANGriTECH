@@ -1193,22 +1193,97 @@ def text_interface(question):
     return ask_rag_with_source(question)
 
 
-def image_interface(
-    image,
-    question,
-    top_k
-):
+
+def image_interface(image, question, top_k):
+    """
+    Giao diện phân tích ảnh có fallback an toàn.
+
+    Nếu Vision/Gemini hoạt động:
+        dùng ask_image_rag() bình thường.
+
+    Nếu dịch vụ AI lỗi/quota:
+        không hiện traceback;
+        nếu có câu hỏi thì dùng RAG văn bản để cung cấp
+        thông tin tham khảo + nguồn.
+    """
+
     try:
         return ask_image_rag(
-            image,
-            question or "",
-            int(top_k)
+            image=image,
+            question=question or "",
+            top_k=int(top_k)
         )
 
     except Exception as error:
+
+        error_text = str(error).lower()
+
+        quota_error = (
+            "429" in error_text
+            or "resource_exhausted" in error_text
+            or "quota" in error_text
+            or "giới hạn lượt sử dụng" in error_text
+        )
+
+        if quota_error:
+
+            analysis_message = (
+                "⚠️ Dịch vụ phân tích hình ảnh AI đang tạm đạt giới hạn lượt sử dụng. "
+                "Hệ thống chưa thể xác định dấu hiệu trực tiếp từ ảnh ở thời điểm này."
+            )
+
+            user_question = (question or "").strip()
+
+            if user_question:
+
+                try:
+                    results = search(
+                        user_question,
+                        k=int(top_k)
+                    )
+
+                    if results:
+                        rag_answer = build_fallback_answer(
+                            results
+                        )
+
+                        sources = build_sources(
+                            results
+                        )
+
+                        advice = (
+                            "📚 Tạm thời chưa phân tích được ảnh, "
+                            "nhưng hệ thống đã tra cứu tài liệu theo câu hỏi của bạn:\n\n"
+                            + rag_answer
+                        )
+
+                        return (
+                            analysis_message,
+                            advice,
+                            sources
+                        )
+
+                except Exception:
+                    pass
+
+            return (
+                analysis_message,
+                (
+                    "Bạn có thể nhập thêm mô tả bằng chữ, ví dụ: "
+                    "'Lá cà phê có đốm vàng nâu' hoặc "
+                    "'Sầu riêng có biểu hiện thối rễ', "
+                    "để hệ thống tra cứu tài liệu trong lúc dịch vụ ảnh tạm bị giới hạn."
+                ),
+                ""
+            )
+
+        # Lỗi khác: không lộ RuntimeError kỹ thuật
         return (
-            "Không thể phân tích ảnh.",
-            f"Lỗi: {type(error).__name__}: {error}",
+            "⚠️ Hệ thống chưa thể phân tích ảnh ở thời điểm này.",
+            (
+                "Vui lòng thử lại sau hoặc nhập mô tả triệu chứng bằng chữ "
+                "để ANGriTECH tra cứu tài liệu liên quan."
+            ),
             ""
         )
 
