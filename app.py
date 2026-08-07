@@ -10,7 +10,7 @@ import faiss
 import gradio as gr
 import numpy as np
 from PIL import Image
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from google import genai
 from google.genai import types
 
@@ -68,8 +68,8 @@ if not METADATA_PATH.exists():
         f"Không tìm thấy: {METADATA_PATH}"
     )
 
-embedding_model = SentenceTransformer(
-    EMBEDDING_MODEL_NAME
+embedding_model = TextEmbedding(
+    model_name=EMBEDDING_MODEL_NAME
 )
 
 index = faiss.read_index(
@@ -143,11 +143,18 @@ def search(question: str, k: int = 5) -> list[dict]:
     if not question or not question.strip():
         return []
 
-    query_vector = embedding_model.encode(
-        [question.strip()],
-        convert_to_numpy=True,
-        normalize_embeddings=True
-    ).astype(np.float32)
+    query_vectors = list(
+        embedding_model.query_embed(
+            [question.strip()]
+        )
+    )
+
+    query_vector = np.asarray(
+        query_vectors,
+        dtype=np.float32
+    )
+
+    faiss.normalize_L2(query_vector)
 
     scores, indices = index.search(
         query_vector,
@@ -896,4 +903,7 @@ Người dùng nên kiểm tra nội dung nhận dạng.
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.environ.get("PORT", 7860))
+    )

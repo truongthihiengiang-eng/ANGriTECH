@@ -1,6 +1,6 @@
 gradio>=6.20,<7
 google-genai>=2.9,<3
-sentence-transformers
+fastembed
 faiss-cpu
-numpy>=2.0,<2.1
+numpy
 Pillow
