@@ -34,7 +34,7 @@ EMBEDDING_MODEL_NAME = (
 
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
-    "models/gemini-3.6-flash"
+    "gemini-2.5-flash"
 )
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
