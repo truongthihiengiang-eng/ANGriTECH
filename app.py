@@ -1,5 +1,6 @@
 
 import os
+import re
 import time
 import pickle
 import base64
@@ -139,9 +140,93 @@ def generate_content(
 # 5. TÌM KIẾM FAISS
 # ============================================================
 
+
+def normalize_text(text):
+    text = str(text or "").lower()
+
+    text = re.sub(
+        r"[^\wÀ-ỹ]+",
+        " ",
+        text,
+        flags=re.UNICODE
+    )
+
+    return " ".join(text.split())
+
+
+def lexical_search(question, k=8):
+    """
+    Tìm kiếm từ khóa trực tiếp trong metadata.
+    Giúp tăng độ chính xác với câu hỏi tiếng Việt.
+    """
+
+    query = normalize_text(question)
+
+    words = [
+        word
+        for word in query.split()
+        if len(word) >= 2
+    ]
+
+    if not words:
+        return []
+
+    scored = []
+
+    for idx, item in enumerate(metadata):
+
+        text = normalize_text(
+            item.get("text", "")
+        )
+
+        score = 0
+
+        # Khớp cả cụm câu
+        if query in text:
+            score += 8
+
+        # Khớp từng từ
+        for word in words:
+
+            count = text.count(word)
+
+            if count:
+                score += min(count, 4)
+
+        if score > 0:
+            scored.append(
+                (
+                    score,
+                    idx
+                )
+            )
+
+    scored.sort(
+        key=lambda x: x[0],
+        reverse=True
+    )
+
+    results = []
+
+    for score, idx in scored[:k]:
+
+        item = dict(metadata[idx])
+
+        item["lexical_score"] = float(score)
+
+        results.append(item)
+
+    return results
+
+
 def search(question: str, k: int = 5) -> list[dict]:
+
     if not question or not question.strip():
         return []
+
+    # --------------------------------------------------------
+    # 1. FAISS semantic search
+    # --------------------------------------------------------
 
     query_vectors = list(
         embedding_model.query_embed(
@@ -154,28 +239,127 @@ def search(question: str, k: int = 5) -> list[dict]:
         dtype=np.float32
     )
 
-    faiss.normalize_L2(query_vector)
+    faiss.normalize_L2(
+        query_vector
+    )
+
+    semantic_k = min(
+        max(int(k) * 3, 10),
+        index.ntotal
+    )
 
     scores, indices = index.search(
         query_vector,
-        min(int(k), index.ntotal)
+        semantic_k
     )
 
-    results = []
+    semantic_results = []
 
     for score, idx in zip(
         scores[0],
         indices[0]
     ):
+
         if idx < 0 or idx >= len(metadata):
             continue
 
         item = dict(metadata[idx])
+
         item["score"] = float(score)
 
-        results.append(item)
+        semantic_results.append(item)
 
-    return results
+
+    # --------------------------------------------------------
+    # 2. Keyword search
+    # --------------------------------------------------------
+
+    keyword_results = lexical_search(
+        question,
+        k=max(int(k) * 3, 10)
+    )
+
+
+    # --------------------------------------------------------
+    # 3. Gộp kết quả
+    # --------------------------------------------------------
+
+    merged = {}
+
+    def result_key(item):
+
+        return (
+            str(item.get("source", "")),
+            str(item.get("page", "")),
+            str(item.get("text", ""))[:120]
+        )
+
+
+    # Semantic
+    for rank, item in enumerate(
+        semantic_results
+    ):
+
+        key = result_key(item)
+
+        combined_score = (
+            1.0 / (rank + 1)
+        )
+
+        merged[key] = {
+            "item": item,
+            "combined_score": combined_score
+        }
+
+
+    # Lexical
+    for rank, item in enumerate(
+        keyword_results
+    ):
+
+        key = result_key(item)
+
+        keyword_bonus = (
+            1.5 / (rank + 1)
+        )
+
+        if key in merged:
+
+            merged[key]["combined_score"] += (
+                keyword_bonus
+            )
+
+        else:
+
+            merged[key] = {
+                "item": item,
+                "combined_score": keyword_bonus
+            }
+
+
+    # --------------------------------------------------------
+    # 4. Sắp xếp
+    # --------------------------------------------------------
+
+    ranked = sorted(
+        merged.values(),
+        key=lambda x: x["combined_score"],
+        reverse=True
+    )
+
+    final_results = []
+
+    for entry in ranked[:int(k)]:
+
+        item = entry["item"]
+
+        item["combined_score"] = float(
+            entry["combined_score"]
+        )
+
+        final_results.append(item)
+
+    return final_results
 
 
 def build_context(
