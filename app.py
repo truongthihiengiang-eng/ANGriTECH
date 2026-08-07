@@ -565,6 +565,224 @@ def build_fallback_answer(
     )
 
 
+
+
+# ============================================================
+# CROP-AWARE SEARCH PRODUCTION
+# Phải nằm TRƯỚC ask_rag_with_source()
+# ============================================================
+
+def normalize_crop_text(text: str) -> str:
+    """
+    Chuẩn hóa tên cây tiếng Việt:
+    cà phê -> ca phe
+    sầu riêng -> sau rieng
+    hồ tiêu -> ho tieu
+    """
+
+    text = str(text or "").lower().strip()
+
+    text = text.replace("đ", "d")
+
+    text = unicodedata.normalize(
+        "NFD",
+        text
+    )
+
+    text = "".join(
+        ch for ch in text
+        if unicodedata.category(ch) != "Mn"
+    )
+
+    text = re.sub(
+        r"[^a-z0-9\s]",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    return text
+
+
+def detect_crop(question: str) -> str | None:
+
+    q = normalize_crop_text(question)
+
+    crop_keywords = {
+        "ca_phe": [
+            "ca phe",
+            "coffee",
+            "robusta",
+            "arabica",
+        ],
+
+        "sau_rieng": [
+            "sau rieng",
+            "durian",
+        ],
+
+        "ho_tieu": [
+            "ho tieu",
+            "cay tieu",
+            "tieu den",
+            "black pepper",
+            "pepper",
+        ],
+    }
+
+    for crop, keywords in crop_keywords.items():
+
+        if any(
+            keyword in q
+            for keyword in keywords
+        ):
+            return crop
+
+    return None
+
+
+def item_crop_score(
+    item: dict,
+    crop: str | None
+) -> int:
+
+    if not crop or not isinstance(item, dict):
+        return 0
+
+    source = str(
+        item.get("source")
+        or item.get("filename")
+        or item.get("file")
+        or ""
+    )
+
+    text = str(
+        item.get("text")
+        or item.get("content")
+        or item.get("chunk")
+        or item.get("page_content")
+        or ""
+    )
+
+    haystack = normalize_crop_text(
+        source + " " + text
+    )
+
+    crop_keywords = {
+        "ca_phe": [
+            "ca phe",
+            "coffee",
+            "robusta",
+            "arabica",
+        ],
+
+        "sau_rieng": [
+            "sau rieng",
+            "durian",
+        ],
+
+        "ho_tieu": [
+            "ho tieu",
+            "cay tieu",
+            "tieu den",
+            "black pepper",
+            "pepper",
+        ],
+    }
+
+    score = 0
+
+    for keyword in crop_keywords.get(crop, []):
+        if keyword in haystack:
+            score += 1
+
+    return score
+
+
+def crop_aware_rerank(
+    question: str,
+    results: list[dict],
+    k: int = 5
+) -> list[dict]:
+
+    if not results:
+        return []
+
+    crop = detect_crop(question)
+
+    if not crop:
+        return results[:k]
+
+    scored = []
+
+    for position, item in enumerate(results):
+
+        crop_score = item_crop_score(
+            item,
+            crop
+        )
+
+        scored.append(
+            (
+                crop_score,
+                -position,
+                item
+            )
+        )
+
+    scored.sort(
+        key=lambda x: (
+            x[0],
+            x[1]
+        ),
+        reverse=True
+    )
+
+    return [
+        item
+        for _, _, item in scored[:k]
+    ]
+
+
+def search(
+    query: str,
+    k: int = 5
+) -> list[dict]:
+    """
+    Search production:
+    Hybrid Search gốc + Crop-aware reranking.
+    """
+
+    candidate_k = max(
+        k * 3,
+        10
+    )
+
+    results = _search_base(
+        query,
+        k=candidate_k
+    )
+
+    if not results:
+        return []
+
+    crop = detect_crop(query)
+
+    if not crop:
+        return results[:k]
+
+    return crop_aware_rerank(
+        query,
+        results,
+        k=k
+    )
+
+
 def ask_rag_with_source(
     question: str,
     k: int = 6
