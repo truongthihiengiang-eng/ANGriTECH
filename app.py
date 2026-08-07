@@ -36,7 +36,7 @@ EMBEDDING_MODEL_NAME = (
 
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
-    "gemini-2.5-flash"
+    "gemini-3.5-flash"
 )
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
@@ -125,68 +125,76 @@ bg1 = file_to_base64(BG1_PATH)
 bg2 = file_to_base64(BG2_PATH)
 
 
+
 def generate_content(
     contents,
-    retries: int = 2
+    retries: int = 1
 ) -> str:
     """
-    Gọi Gemini an toàn.
+    Gemini model fallback:
+    1. gemini-3.5-flash
+    2. gemini-3.5-flash-lite
 
-    - 429/quota: không retry liên tục
-    - Lỗi tạm thời khác: retry ngắn
-    - Không đưa chi tiết kỹ thuật ra giao diện
+    Nếu cả hai đều không khả dụng:
+    raise RuntimeError thân thiện để pipeline RAG fallback xử lý.
     """
+
+    models = [
+        GEMINI_MODEL,
+        "gemini-3.5-flash-lite",
+    ]
+
+    # loại model trùng
+    models = list(dict.fromkeys(models))
 
     last_error = None
 
-    for attempt in range(retries + 1):
+    for model_name in models:
 
-        try:
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=contents
-            )
+        for attempt in range(retries + 1):
 
-            if response.text:
-                return response.text.strip()
-
-            raise RuntimeError(
-                "Gemini không trả về nội dung."
-            )
-
-        except Exception as error:
-
-            last_error = error
-            error_text = str(error).lower()
-
-            # -----------------------------------------------
-            # Hết quota / rate limit
-            # -----------------------------------------------
-
-            quota_error = (
-                "429" in error_text
-                or "resource_exhausted" in error_text
-                or "quota exceeded" in error_text
-                or "rate limit" in error_text
-            )
-
-            if quota_error:
-                raise RuntimeError(
-                    "Dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
-                    "Vui lòng thử lại sau vài phút."
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents
                 )
 
-            # -----------------------------------------------
-            # Lỗi khác: thử lại ngắn
-            # -----------------------------------------------
+                if response.text:
+                    return response.text.strip()
 
-            if attempt < retries:
-                time.sleep(2 ** attempt)
-                continue
+                raise RuntimeError(
+                    "Gemini không trả về nội dung."
+                )
+
+            except Exception as error:
+
+                last_error = error
+                error_text = str(error).lower()
+
+                quota_or_model_error = (
+                    "429" in error_text
+                    or "resource_exhausted" in error_text
+                    or "quota exceeded" in error_text
+                    or "rate limit" in error_text
+                    or "404" in error_text
+                    or "not_found" in error_text
+                    or "not found" in error_text
+                )
+
+                # Nếu quota/model lỗi -> chuyển ngay sang model dự phòng
+                if quota_or_model_error:
+                    break
+
+                # Lỗi khác -> retry ngắn
+                if attempt < retries:
+                    time.sleep(2 ** attempt)
+                    continue
+
+                break
 
     raise RuntimeError(
-        "Dịch vụ AI tạm thời chưa phản hồi. "
-        "Vui lòng thử lại sau."
+        "Dịch vụ AI đang tạm thời không khả dụng. "
+        "Hệ thống sẽ sử dụng thông tin từ tài liệu nếu có."
     )
 
 def normalize_text(text):
