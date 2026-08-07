@@ -1361,6 +1361,206 @@ button.primary:hover {
 footer {
     display: none !important;
 }
+
+
+/* ============================================================
+   CELL 41 - FIX TAB CONTRAST
+============================================================ */
+
+/* Thanh chứa tab */
+.tab-nav,
+.tabs > .tab-nav,
+div[role="tablist"] {
+    gap: 6px !important;
+    padding: 6px !important;
+
+    background: #f0fdf4 !important;
+
+    border: 1px solid #bbf7d0 !important;
+    border-radius: 14px !important;
+
+    box-shadow:
+        0 5px 15px rgba(22, 101, 52, 0.08) !important;
+}
+
+
+/* ============================================================
+   TAB CHƯA CHỌN
+============================================================ */
+
+.tab-nav button,
+.tabs .tab-nav button,
+button[role="tab"] {
+    min-height: 44px !important;
+
+    padding: 10px 14px !important;
+
+    color: #14532d !important;
+
+    background:
+        linear-gradient(
+            180deg,
+            #ffffff 0%,
+            #ecfdf5 100%
+        ) !important;
+
+    border: 1px solid #bbf7d0 !important;
+    border-radius: 10px !important;
+
+    font-size: 14px !important;
+    font-weight: 800 !important;
+
+    opacity: 1 !important;
+
+    text-shadow: none !important;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,.05) !important;
+
+    transition:
+        background .18s ease,
+        color .18s ease,
+        transform .18s ease,
+        box-shadow .18s ease !important;
+}
+
+
+/* Ép text/span bên trong tab chưa chọn */
+.tab-nav button span,
+.tab-nav button div,
+.tabs .tab-nav button span,
+.tabs .tab-nav button div,
+button[role="tab"] span,
+button[role="tab"] div {
+    color: #14532d !important;
+
+    opacity: 1 !important;
+
+    font-weight: 800 !important;
+
+    text-shadow: none !important;
+}
+
+
+/* ============================================================
+   HOVER
+============================================================ */
+
+.tab-nav button:hover,
+.tabs .tab-nav button:hover,
+button[role="tab"]:hover {
+    color: #065f46 !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #dcfce7 0%,
+            #d1fae5 100%
+        ) !important;
+
+    border-color: #4ade80 !important;
+
+    transform: translateY(-1px) !important;
+
+    box-shadow:
+        0 6px 14px rgba(22,163,74,.14) !important;
+}
+
+.tab-nav button:hover span,
+.tab-nav button:hover div,
+button[role="tab"]:hover span,
+button[role="tab"]:hover div {
+    color: #065f46 !important;
+}
+
+
+/* ============================================================
+   TAB ĐANG ĐƯỢC CHỌN
+============================================================ */
+
+.tab-nav button.selected,
+.tab-nav button[aria-selected="true"],
+.tabs .tab-nav button.selected,
+.tabs .tab-nav button[aria-selected="true"],
+button[role="tab"][aria-selected="true"] {
+    color: #ffffff !important;
+
+    background:
+        linear-gradient(
+            100deg,
+            #ff7417 0%,
+            #f97316 45%,
+            #16a34a 100%
+        ) !important;
+
+    border-color: transparent !important;
+
+    box-shadow:
+        0 7px 17px rgba(249,115,22,.22),
+        0 3px 10px rgba(22,163,74,.15) !important;
+
+    transform: translateY(-1px) !important;
+
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.30) !important;
+}
+
+
+/* Ép chữ tab đang chọn thành trắng */
+.tab-nav button.selected span,
+.tab-nav button.selected div,
+.tab-nav button[aria-selected="true"] span,
+.tab-nav button[aria-selected="true"] div,
+.tabs .tab-nav button[aria-selected="true"] span,
+.tabs .tab-nav button[aria-selected="true"] div,
+button[role="tab"][aria-selected="true"] span,
+button[role="tab"][aria-selected="true"] div {
+    color: #ffffff !important;
+
+    opacity: 1 !important;
+
+    font-weight: 800 !important;
+
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.30) !important;
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 768px) {
+
+    .tab-nav,
+    .tabs > .tab-nav,
+    div[role="tablist"] {
+        display: grid !important;
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr)) !important;
+
+        gap: 6px !important;
+    }
+
+    .tab-nav button,
+    .tabs .tab-nav button,
+    button[role="tab"] {
+        width: 100% !important;
+
+        min-height: 46px !important;
+
+        padding: 8px 7px !important;
+
+        font-size: 12px !important;
+
+        white-space: normal !important;
+
+        line-height: 1.25 !important;
+    }
+}
+
+
 """
 
 
