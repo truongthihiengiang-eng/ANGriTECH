@@ -1,3 +1,4 @@
+import unicodedata
 
 import os
 import re
@@ -251,7 +252,7 @@ def lexical_search(question, k=8):
     return results
 
 
-def search(question: str, k: int = 5) -> list[dict]:
+def _search_base(question: str, k: int = 5) -> list[dict]:
 
     if not question or not question.strip():
         return []
@@ -2010,3 +2011,243 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=int(os.environ.get("PORT", 7860))
     )
+
+
+
+# ============================================================
+# CROP-AWARE RERANKING
+# Ưu tiên tài liệu đúng cây trồng sau Hybrid Search
+# ============================================================
+
+
+
+
+
+def crop_aware_rerank(
+    question: str,
+    results: list[dict],
+    k: int = 5
+) -> list[dict]:
+    """
+    Ưu tiên kết quả đúng cây trồng.
+
+    Nếu không nhận diện được cây:
+        giữ nguyên kết quả.
+
+    Nếu nhận diện được:
+        tài liệu đúng cây được đưa lên trước.
+
+    Không loại bỏ hoàn toàn fallback chung.
+    """
+
+    if not results:
+        return []
+
+    crop = detect_crop(question)
+
+    if not crop:
+        return results[:k]
+
+    scored = []
+
+    for position, item in enumerate(results):
+
+        crop_score = item_crop_score(
+            item,
+            crop
+        )
+
+        scored.append(
+            (
+                crop_score,
+                -position,
+                item
+            )
+        )
+
+    scored.sort(
+        key=lambda x: (
+            x[0],
+            x[1]
+        ),
+        reverse=True
+    )
+
+    return [
+        item
+        for _, _, item in scored[:k]
+    ]
+
+
+def normalize_crop_text(text: str) -> str:
+    """
+    Chuẩn hóa tiếng Việt để nhận diện cây trồng:
+    Hồ tiêu -> ho tieu
+    Cà phê -> ca phe
+    Sầu riêng -> sau rieng
+    """
+
+    text = str(text or "").lower().strip()
+
+    text = text.replace("đ", "d")
+
+    text = unicodedata.normalize(
+        "NFD",
+        text
+    )
+
+    text = "".join(
+        ch for ch in text
+        if unicodedata.category(ch) != "Mn"
+    )
+
+    text = re.sub(
+        r"[^a-z0-9\s]",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    return text
+
+
+def detect_crop(question: str) -> str | None:
+
+    q = normalize_crop_text(question)
+
+    crop_keywords = {
+        "ca_phe": [
+            "ca phe",
+            "coffee",
+            "robusta",
+            "arabica",
+        ],
+
+        "sau_rieng": [
+            "sau rieng",
+            "durian",
+        ],
+
+        "ho_tieu": [
+            "ho tieu",
+            "cay tieu",
+            "tieu den",
+            "black pepper",
+            "pepper",
+        ],
+    }
+
+    for crop, keywords in crop_keywords.items():
+
+        if any(
+            keyword in q
+            for keyword in keywords
+        ):
+            return crop
+
+    return None
+
+
+def item_crop_score(
+    item: dict,
+    crop: str | None
+) -> int:
+
+    if not crop or not isinstance(item, dict):
+        return 0
+
+    source = str(
+        item.get("source")
+        or item.get("filename")
+        or item.get("file")
+        or ""
+    )
+
+    text = str(
+        item.get("text")
+        or item.get("content")
+        or item.get("chunk")
+        or item.get("page_content")
+        or ""
+    )
+
+    haystack = normalize_crop_text(
+        source + " " + text
+    )
+
+    crop_keywords = {
+        "ca_phe": [
+            "ca phe",
+            "coffee",
+            "robusta",
+            "arabica",
+        ],
+
+        "sau_rieng": [
+            "sau rieng",
+            "durian",
+        ],
+
+        "ho_tieu": [
+            "ho tieu",
+            "cay tieu",
+            "tieu den",
+            "black pepper",
+            "pepper",
+        ],
+    }
+
+    score = 0
+
+    for keyword in crop_keywords.get(crop, []):
+        if keyword in haystack:
+            score += 1
+
+    return score
+
+
+
+# ============================================================
+# PRODUCTION SEARCH - HYBRID + CROP-AWARE RERANK
+# ============================================================
+
+def search(
+    query: str,
+    k: int = 5
+) -> list[dict]:
+    """
+    Hybrid Search hiện tại + Crop-aware reranking.
+
+    - Lấy nhiều candidate từ search gốc.
+    - Nếu nhận diện được cây trồng:
+      ưu tiên tài liệu đúng cây.
+    - Nếu không nhận diện được:
+      giữ hành vi search thông thường.
+    """
+
+    candidate_k = max(k * 3, 10)
+
+    results = _search_base(
+        query,
+        k=candidate_k
+    )
+
+    if not results:
+        return []
+
+    crop = detect_crop(query)
+
+    if not crop:
+        return results[:k]
+
+    return crop_aware_rerank(
+        query,
+        results,
+        k=k
+    )
+
