@@ -1089,26 +1089,171 @@ Không giải thích thêm.
     )
 
 
+
 def voice_rag(
     audio_path,
-    language: str
+    language_name
 ):
-    try:
-        question = transcribe_audio(
-            audio_path,
-            language
-        )
+    """
+    Giọng nói Việt/Anh -> transcript -> RAG.
 
-        answer, sources = ask_rag_with_source(
-            question
-        )
+    Output:
+    1. Nội dung nhận dạng
+    2. Câu trả lời
+    3. Nguồn tài liệu
 
-        return question, answer, sources
+    Không hiển thị RuntimeError/Traceback ra giao diện.
+    """
 
-    except Exception as error:
+    # --------------------------------------------------------
+    # Không có audio
+    # --------------------------------------------------------
+
+    if not audio_path:
         return (
             "",
-            f"Lỗi: {type(error).__name__}: {error}",
+            "⚠️ Bạn chưa ghi âm hoặc tải tệp âm thanh.",
+            ""
+        )
+
+    # --------------------------------------------------------
+    # 1. NHẬN DẠNG GIỌNG NÓI
+    # --------------------------------------------------------
+
+    try:
+        transcript = transcribe_audio(
+            audio_path,
+            language_name
+        )
+
+        transcript = str(
+            transcript or ""
+        ).strip()
+
+    except Exception as error:
+
+        error_text = str(error).lower()
+
+        quota_error = (
+            "429" in error_text
+            or "resource_exhausted" in error_text
+            or "quota" in error_text
+            or "giới hạn lượt sử dụng" in error_text
+        )
+
+        if quota_error:
+            return (
+                "",
+                (
+                    "⚠️ Dịch vụ nhận dạng giọng nói AI đang tạm "
+                    "đạt giới hạn lượt sử dụng. "
+                    "Vui lòng thử lại sau hoặc nhập câu hỏi "
+                    "trực tiếp tại tab Tra cứu văn bản."
+                ),
+                ""
+            )
+
+        return (
+            "",
+            (
+                "⚠️ Hiện chưa thể nhận dạng tệp âm thanh. "
+                "Vui lòng kiểm tra chất lượng ghi âm hoặc thử lại."
+            ),
+            ""
+        )
+
+    # --------------------------------------------------------
+    # 2. KIỂM TRA TRANSCRIPT
+    # --------------------------------------------------------
+
+    if not transcript:
+        return (
+            "",
+            (
+                "⚠️ Hệ thống chưa nhận dạng được nội dung rõ ràng. "
+                "Vui lòng ghi âm lại ở nơi ít tiếng ồn."
+            ),
+            ""
+        )
+
+    # --------------------------------------------------------
+    # 3. RAG THEO TRANSCRIPT
+    # --------------------------------------------------------
+
+    try:
+
+        answer, sources = ask_rag_with_source(
+            transcript
+        )
+
+        return (
+            transcript,
+            answer,
+            sources
+        )
+
+    except Exception as error:
+
+        error_text = str(error).lower()
+
+        quota_error = (
+            "429" in error_text
+            or "resource_exhausted" in error_text
+            or "quota" in error_text
+            or "giới hạn lượt sử dụng" in error_text
+        )
+
+        # ----------------------------------------------------
+        # 4. RAG FALLBACK KHÔNG GỌI GEMINI
+        # ----------------------------------------------------
+
+        try:
+
+            results = search(
+                transcript,
+                k=5
+            )
+
+            if results:
+
+                fallback_answer = build_fallback_answer(
+                    results
+                )
+
+                sources = build_sources(
+                    results
+                )
+
+                return (
+                    transcript,
+                    fallback_answer,
+                    sources
+                )
+
+        except Exception:
+            pass
+
+        # ----------------------------------------------------
+        # Nếu cả RAG fallback cũng không dùng được
+        # ----------------------------------------------------
+
+        if quota_error:
+            return (
+                transcript,
+                (
+                    "⚠️ Nội dung giọng nói đã được nhận dạng, "
+                    "nhưng dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
+                    "Vui lòng thử lại sau."
+                ),
+                ""
+            )
+
+        return (
+            transcript,
+            (
+                "⚠️ Nội dung giọng nói đã được nhận dạng, "
+                "nhưng hệ thống chưa thể hoàn tất tra cứu lúc này."
+            ),
             ""
         )
 
