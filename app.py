@@ -1593,6 +1593,35 @@ with gr.Blocks(
             with gr.Group(
                 elem_classes="card"
             ):
+
+                # ===== DEMO MODE ANGRITECH V2 =====
+
+                gr.Markdown(
+                    "### 🌱 Câu hỏi gợi ý"
+                )
+
+                with gr.Row():
+
+                    demo_water = gr.Button(
+                        "💧 Tưới nước",
+                        variant="secondary"
+                    )
+
+                    demo_fertilizer = gr.Button(
+                        "🌿 Bón phân",
+                        variant="secondary"
+                    )
+
+                    demo_pest = gr.Button(
+                        "🐛 Sâu bệnh",
+                        variant="secondary"
+                    )
+
+                    demo_dry = gr.Button(
+                        "☀️ Mùa khô",
+                        variant="secondary"
+                    )
+
                 text_question = gr.Textbox(
                     label="Nhập câu hỏi",
                     lines=4,
@@ -1601,6 +1630,37 @@ with gr.Blocks(
                         "cho cây cà phê?"
                     )
                 )
+
+                # ========================================================
+                # DEMO MODE EVENTS
+                # Chỉ điền câu hỏi - KHÔNG tự gọi Gemini
+                # ========================================================
+
+                demo_water.click(
+                    fn=lambda: "Khi nào nên tưới nước cho cây cà phê?",
+                    inputs=None,
+                    outputs=text_question
+                )
+
+                demo_fertilizer.click(
+                    fn=lambda: "Cách bón phân cho cây cà phê như thế nào?",
+                    inputs=None,
+                    outputs=text_question
+                )
+
+                demo_pest.click(
+                    fn=lambda: "Các biện pháp phòng trừ sâu bệnh hại cà phê?",
+                    inputs=None,
+                    outputs=text_question
+                )
+
+                demo_dry.click(
+                    fn=lambda: "Làm thế nào để chăm sóc cà phê trong mùa khô?",
+                    inputs=None,
+                    outputs=text_question
+                )
+
+
 
                 text_button = gr.Button(
                     "🔍 Tra cứu",
