@@ -70,9 +70,24 @@ if not METADATA_PATH.exists():
         f"Không tìm thấy: {METADATA_PATH}"
     )
 
-embedding_model = TextEmbedding(
-    model_name=EMBEDDING_MODEL_NAME
-)
+# FastEmbed được lazy-load để Render mở port nhanh hơn.
+# Model chỉ được khởi tạo khi có truy vấn đầu tiên.
+_embedding_model = None
+
+
+def get_embedding_model():
+    global _embedding_model
+
+    if _embedding_model is None:
+        print("🔄 Loading FastEmbed model on first query...")
+
+        _embedding_model = TextEmbedding(
+            model_name=EMBEDDING_MODEL_NAME
+        )
+
+        print("✅ FastEmbed model loaded")
+
+    return _embedding_model
 
 index = faiss.read_index(
     str(INDEX_PATH)
@@ -262,7 +277,7 @@ def _search_base(question: str, k: int = 5) -> list[dict]:
     # --------------------------------------------------------
 
     query_vectors = list(
-        embedding_model.query_embed(
+        get_embedding_model().query_embed(
             [question.strip()]
         )
     )
