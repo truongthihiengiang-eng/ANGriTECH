@@ -861,100 +861,508 @@ def image_interface(
 # 11. CSS
 # ============================================================
 
+
 custom_css = """
-.gradio-container {
-    max-width: 1400px !important;
-    margin: auto !important;
+@import url(
+    'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap'
+);
+
+* {
+    font-family: 'Be Vietnam Pro', sans-serif !important;
+    box-sizing: border-box;
 }
 
-#header {
-    padding: 28px;
-    margin-bottom: 18px;
-    border-radius: 24px;
 
-    color: white;
-    text-align: center;
+/* ============================================================
+   TOÀN TRANG
+============================================================ */
 
+body {
     background:
         linear-gradient(
             135deg,
-            rgba(3, 70, 40, 0.96),
-            rgba(14, 130, 75, 0.92)
-        );
-
-    box-shadow:
-        0 18px 45px rgba(0, 0, 0, 0.25);
-}
-
-#header h1 {
-    margin: 0;
-    font-size: 52px;
-    font-weight: 800;
-}
-
-.tab-nav {
-    padding: 8px !important;
-    border-radius: 16px !important;
-
-    background:
-        linear-gradient(
-            135deg,
-            #064e3b,
-            #166534
+            #f8fafc 0%,
+            #eefbf3 50%,
+            #f8fafc 100%
         ) !important;
 }
 
+.gradio-container {
+    max-width: 1450px !important;
+    margin: auto !important;
+    padding: 20px !important;
+
+    background: transparent !important;
+}
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+#header {
+    position: relative;
+    overflow: hidden;
+
+    padding: 30px 24px !important;
+    margin-bottom: 18px !important;
+
+    border-radius: 26px !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #075f3d 0%,
+            #0d7a4f 45%,
+            #21935f 100%
+        ) !important;
+
+    border:
+        1px solid rgba(255,255,255,.24) !important;
+
+    box-shadow:
+        0 18px 45px rgba(0,0,0,.18),
+        inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+
+#header::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            115deg,
+            transparent 25%,
+            rgba(255,255,255,.18) 50%,
+            transparent 75%
+        );
+
+    transform: translateX(-130%);
+    animation: headerShine 7s infinite;
+}
+
+@keyframes headerShine {
+    0% {
+        transform: translateX(-130%);
+    }
+
+    45%,
+    100% {
+        transform: translateX(130%);
+    }
+}
+
+#header h1 {
+    position: relative;
+    z-index: 1;
+
+    margin: 0 !important;
+
+    color: #ffffff !important;
+
+    font-size: clamp(38px, 5vw, 58px) !important;
+    font-weight: 800 !important;
+
+    letter-spacing: 1px !important;
+
+    text-shadow:
+        0 3px 0 rgba(0,0,0,.18),
+        0 8px 22px rgba(0,0,0,.28),
+        0 0 24px rgba(134,239,172,.30) !important;
+}
+
+#header p {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 10px !important;
+
+    color: #ecfdf5 !important;
+
+    font-size: 15px !important;
+    font-weight: 600 !important;
+
+    text-shadow:
+        0 2px 8px rgba(0,0,0,.35) !important;
+}
+
+
+/* ============================================================
+   THANH TAB
+============================================================ */
+
+.tab-nav {
+    display: flex !important;
+    gap: 8px !important;
+
+    padding: 8px !important;
+    margin-bottom: 16px !important;
+
+    border-radius: 18px !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #064e3b 0%,
+            #0b6848 100%
+        ) !important;
+
+    border:
+        1px solid rgba(255,255,255,.14) !important;
+
+    box-shadow:
+        0 12px 30px rgba(0,0,0,.18),
+        inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+
+/* ============================================================
+   TAB CHƯA CHỌN
+============================================================ */
+
 .tab-nav button,
+button[role="tab"] {
+    position: relative !important;
+
+    flex: 1 1 auto !important;
+
+    min-height: 46px !important;
+
+    padding: 11px 14px !important;
+
+    color: #ffffff !important;
+
+    font-size: 15px !important;
+    font-weight: 800 !important;
+
+    background:
+        rgba(255,255,255,.08) !important;
+
+    border:
+        1px solid rgba(255,255,255,.10) !important;
+
+    border-radius: 12px !important;
+
+    opacity: 1 !important;
+
+    text-shadow:
+        0 2px 7px rgba(0,0,0,.58) !important;
+
+    transition:
+        transform .22s ease,
+        background .22s ease,
+        box-shadow .22s ease !important;
+}
+
+
+/* ÉP CHỮ VÀ ICON TRẮNG */
+
 .tab-nav button *,
-button[role="tab"],
-button[role="tab"] * {
-    color: white !important;
+.tab-nav button span,
+.tab-nav button div,
+button[role="tab"] *,
+button[role="tab"] span,
+button[role="tab"] div {
+    color: #ffffff !important;
+    fill: #ffffff !important;
     opacity: 1 !important;
     font-weight: 800 !important;
 }
 
-.tab-nav button[aria-selected="true"] {
+
+/* HOVER */
+
+.tab-nav button:hover,
+button[role="tab"]:hover {
+    color: #ffffff !important;
+
     background:
         linear-gradient(
             135deg,
-            #ea580c,
-            #f97316,
-            #15803d
+            rgba(34,197,94,.40),
+            rgba(16,185,129,.28)
         ) !important;
 
-    border-radius: 12px !important;
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 18px rgba(22,163,74,.22) !important;
 }
+
+
+/* TAB ĐANG CHỌN */
+
+.tab-nav button.selected,
+.tab-nav button[aria-selected="true"],
+button[role="tab"][aria-selected="true"] {
+    color: #ffffff !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f97316 0%,
+            #fb923c 46%,
+            #16a34a 100%
+        ) !important;
+
+    border:
+        1px solid rgba(255,255,255,.30) !important;
+
+    box-shadow:
+        0 10px 24px rgba(249,115,22,.30),
+        0 0 18px rgba(34,197,94,.16) !important;
+
+    transform:
+        translateY(-2px)
+        scale(1.01);
+}
+
+
+/* ============================================================
+   CARD
+============================================================ */
 
 .card {
     padding: 18px !important;
+
     border-radius: 20px !important;
 
     background:
-        rgba(248, 255, 250, 0.97) !important;
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,.98),
+            rgba(242,253,247,.97)
+        ) !important;
 
     border:
-        1px solid rgba(22, 101, 52, 0.18) !important;
+        1px solid rgba(22,101,52,.16) !important;
 
     box-shadow:
-        0 16px 40px rgba(0, 0, 0, 0.14) !important;
+        0 16px 38px rgba(0,0,0,.12),
+        inset 0 1px 0 rgba(255,255,255,.95) !important;
 }
+
+
+/* ============================================================
+   LABEL
+============================================================ */
 
 .card label,
-.card label span {
+.card label span,
+.card .label-wrap,
+.card .label-wrap span {
     color: #14532d !important;
+
+    font-size: 14px !important;
     font-weight: 800 !important;
+
+    opacity: 1 !important;
+
+    text-shadow: none !important;
 }
 
+
+/* ============================================================
+   TEXTBOX / INPUT
+============================================================ */
+
 .card textarea,
-.card input {
+.card input,
+.card select {
     color: #111827 !important;
-    background: white !important;
+
+    background: #ffffff !important;
+
+    border:
+        1.5px solid rgba(22,101,52,.22) !important;
+
+    border-radius: 13px !important;
+
+    box-shadow:
+        inset 0 2px 6px rgba(0,0,0,.035) !important;
+}
+
+.card textarea::placeholder,
+.card input::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+}
+
+.card textarea:focus,
+.card input:focus,
+.card select:focus {
+    border-color: #22c55e !important;
+
+    box-shadow:
+        0 0 0 4px rgba(34,197,94,.13) !important;
+}
+
+
+/* ============================================================
+   OUTPUT
+============================================================ */
+
+.card textarea[readonly] {
+    color: #111827 !important;
+
+    background:
+        linear-gradient(
+            180deg,
+            #ffffff 0%,
+            #f8fffb 100%
+        ) !important;
+}
+
+
+/* ============================================================
+   NÚT CHÍNH
+============================================================ */
+
+button.primary {
+    color: #ffffff !important;
+
+    font-weight: 800 !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f97316 0%,
+            #fb7c18 45%,
+            #16a34a 100%
+        ) !important;
+
+    border:
+        1px solid rgba(255,255,255,.22) !important;
+
+    border-radius: 13px !important;
+
+    box-shadow:
+        0 8px 18px rgba(249,115,22,.24),
+        inset 0 1px 0 rgba(255,255,255,.18) !important;
+
+    transition:
+        transform .20s ease,
+        box-shadow .20s ease,
+        filter .20s ease !important;
+}
+
+button.primary:hover {
+    transform: translateY(-2px);
+
+    filter: brightness(1.05);
+
+    box-shadow:
+        0 11px 24px rgba(249,115,22,.30),
+        0 0 18px rgba(34,197,94,.14) !important;
+}
+
+
+/* ============================================================
+   NÚT PHỤ
+============================================================ */
+
+.card button:not(.primary) {
+    color: #14532d !important;
+
+    background:
+        #ecfdf5 !important;
+
+    border:
+        1px solid rgba(22,101,52,.22) !important;
+
+    font-weight: 700 !important;
+}
+
+
+/* ============================================================
+   INFO / MARKDOWN
+============================================================ */
+
+.card p,
+.card li,
+.card strong,
+.card em {
+    color: #1f2937 !important;
+}
+
+.card h1,
+.card h2,
+.card h3,
+.card h4 {
+    color: #14532d !important;
+}
+
+
+/* ============================================================
+   CẢNH BÁO
+============================================================ */
+
+.warning-box {
+    padding: 12px 14px !important;
+
+    border-radius: 12px !important;
+
+    color: #92400e !important;
+
+    background:
+        #fff7ed !important;
+
+    border:
+        1px solid #fed7aa !important;
+}
+
+
+/* ============================================================
+   RESPONSIVE MOBILE
+============================================================ */
+
+@media (max-width: 768px) {
+
+    .gradio-container {
+        padding: 10px !important;
+    }
+
+    #header {
+        padding: 22px 14px !important;
+        border-radius: 18px !important;
+    }
+
+    #header h1 {
+        font-size: 38px !important;
+    }
+
+    #header p {
+        font-size: 13px !important;
+    }
+
+    .tab-nav {
+        flex-wrap: wrap !important;
+    }
+
+    .tab-nav button,
+    button[role="tab"] {
+        flex: 1 1 46% !important;
+
+        font-size: 13px !important;
+
+        min-height: 42px !important;
+
+        padding: 9px 8px !important;
+    }
+
+    .card {
+        padding: 12px !important;
+        border-radius: 16px !important;
+    }
 }
 
 footer {
     display: none !important;
 }
 """
+
 
 
 # ============================================================
