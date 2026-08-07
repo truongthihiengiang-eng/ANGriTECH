@@ -441,6 +441,68 @@ def build_sources(
 # ============================================================
 
 
+
+# ===== FALLBACK RAG WITHOUT GEMINI =====
+def build_fallback_answer(
+    results,
+    max_items: int = 3,
+    max_chars: int = 700
+):
+    """
+    Tạo câu trả lời tạm thời trực tiếp từ các đoạn RAG
+    khi Gemini hết quota hoặc tạm thời không phản hồi.
+    """
+
+    if not results:
+        return (
+            "Tôi chưa tìm thấy thông tin phù hợp trong tài liệu hiện có."
+        )
+
+    parts = []
+
+    for i, item in enumerate(results[:max_items], start=1):
+
+        text = str(
+            item.get("text", "")
+        ).strip()
+
+        if not text:
+            continue
+
+        # Làm gọn khoảng trắng
+        text = " ".join(text.split())
+
+        if len(text) > max_chars:
+            text = text[:max_chars].rstrip() + "..."
+
+        source = item.get(
+            "source",
+            "Không rõ nguồn"
+        )
+
+        page = item.get(
+            "page",
+            "Không rõ trang"
+        )
+
+        parts.append(
+            f"{i}. {text}\n"
+            f"   Nguồn: {source} - Trang {page}"
+        )
+
+    if not parts:
+        return (
+            "Tôi chưa tìm thấy nội dung đủ rõ trong tài liệu hiện có."
+        )
+
+    return (
+        "⚠️ AI đang tạm đạt giới hạn lượt sử dụng. "
+        "Dưới đây là các thông tin liên quan được trích trực tiếp "
+        "từ tài liệu để bạn tham khảo:\n\n"
+        + "\n\n".join(parts)
+    )
+
+
 def ask_rag_with_source(
     question: str,
     k: int = 6
@@ -552,6 +614,20 @@ Hãy trả lời trực tiếp câu hỏi của người dùng.
             message = (
                 "⚠️ Dịch vụ AI đang tạm đạt giới hạn lượt sử dụng. "
                 "Vui lòng thử lại sau vài phút."
+            )
+        else:
+            message = (
+                "⚠️ Dịch vụ AI tạm thời chưa phản hồi. "
+                "Vui lòng thử lại sau."
+            )
+
+        if (
+            "giới hạn lượt sử dụng" in error_text.lower()
+            or "quota" in error_text.lower()
+            or "429" in error_text
+        ):
+            message = build_fallback_answer(
+                results
             )
         else:
             message = (
